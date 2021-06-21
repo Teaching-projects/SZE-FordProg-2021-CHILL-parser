@@ -8,6 +8,11 @@ ALL:                'ALL';
 ALLOCATE:           'ALLOCATE';
 AND:                'AND';
 ANDIF:              'ANDIF';
+ANY:                'ANY';
+ANY_ASSIGN:         'ANY_ASSIGN';
+ANY_DISCRETE:       'ANY_DISCRETE';
+ANY_INT:            'ANY_INT';
+ANY_REAL:           'ANY_REAL';
 ARRAY:              'ARRAY';
 ASM_KEYWORD:        'ASM_KEYWORD';
 ASSERT:             'ASSERT';
@@ -20,6 +25,7 @@ BIN:                'BIN';
 BIT:                'BIT';
 BITSTRING:          'BITSTRING';
 BODY:               'BODY';
+BOOL:               'BOOL';
 BOOLS:              'BOOLS';
 BUFFER:             'BUFFER';
 BUFFERNAME:         'BUFFERNAME';
@@ -33,6 +39,7 @@ CDDEL:              'CDDEL';
 CHAR:               'CHAR';
 CHARS:              'CHARS';
 CONST:              'CONST';
+CONTEXT:            'CONTEXT';
 CONTINUE:           'CONTINUE';
 CYCLE:              'CYCLE';
 
@@ -90,6 +97,7 @@ OF:                 'OF';
 ON:                 'ON';
 OR:                 'OR';
 ORIF:               'ORIF';
+OUT:                'OUT';
 
 PACK:               'PACK';
 PARAMATTR:          'PARAMATTR';
@@ -109,6 +117,7 @@ RECURSIVE:          'RECURSIVE';
 REF:                'REF';
 REGION:             'REGION';
 REM:                'REM';
+REMOTE:             'REMOTE';
 RESULT:             'RESULT';
 RETURN:             'RETURN';
 RETURNS:            'RETURNS';
@@ -186,8 +195,11 @@ DIGIT
     : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
     ;
 
-BOOL_LITERAL:       'TRUE'
-            |       'FALSE'
+TRUE:               'TRUE';
+FALSE:              'FALSE';
+
+BOOL_LITERAL:       TRUE
+            |       FALSE
             ;
 
 NULL_LITERAL:       'NULL';
@@ -251,7 +263,7 @@ OCT_LITERAL:           OCT_LITERAL_PREFIX? OCT_NUMBER;
 E:   'E';
 
 SIMPLE_NAME_STRING
-    : LETTER (LETTER | DIGIT | UNDERSCORE )*
+    : LETTER (LETTER | DIGIT | UNDERSCORE)*
     ;
 
 //TODO check
@@ -307,3 +319,33 @@ DIRECTIVE_BODY
     | SIGNAL_CODE EQL DECIMAL_LITERAL
     | USE_SEIZE_FILE STRING_CHAR_PREFIX FILE_NAME STRING_CHAR_PREFIX
     | USE_SEIZE_FILE_RESTRICTED STRING_CHAR_PREFIX FILE_NAME STRING_CHAR_PREFIX;
+
+FLOATING_POINT_MODE_NAME
+    : 'FLOAT'
+    | 'LONG_FLOAT'
+    | 'SHORT_FLOAT'
+    ;
+
+CHARACTER_MODE_NAME
+    : CHAR
+    | 'WCHAR'
+    ;
+
+WIDE_CHARACTER_PREFIX
+    : 'W\''
+    | 'w\''
+    ;
+
+//TODO check, as these are only the predefined
+INTEGER_MODE_NAME
+    : 'INT'
+    | 'LONG_INT'
+    | 'SHORT_INT'
+    | 'UNSIGNED_INT'
+    ;
+
+STRING_TYPE
+    : BOOLS
+    | CHARS
+    | 'WCHARS'
+    ;

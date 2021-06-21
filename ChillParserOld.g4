@@ -1,15 +1,59 @@
-grammar ChillParser;
+parser grammar ChillParser;
 
-import ChillLexer;
+options {
+    tokenVocab=ChillLexer;
+}
 
 program
-    : module+ EOF
+    : ( module
+    | specModule
+    | region
+    | specRegion
+    | moretaDeclarationStatement
+    | moretaSynmodeDefinitionStatement
+    | moretaNewmodeDefinitionStatement
+    | template
+    )+
     ;
 
 module
-    : contextList? (definingOccurrence COLON)?
+    : contextList? definingOccurrence?
       MODULE BODY? moduleBody END
       handler? SIMPLE_NAME_STRING? SC
+    | remoteModulion
+    | genericModuleInstantiation
+    ;
+
+specModule
+    : simpleSpecModule
+    | moduleSpec
+    | remoteSpec
+    ;
+
+region
+    : contextList? definingOccurrence?
+      REGION BODY? regionBody END
+      handler? SIMPLE_NAME_STRING? SC
+    | remoteModulion
+    | genericRegionInstantiation
+    ;
+
+specRegion
+    : simpleSpecRegion
+    | regionSpec
+    | remoteSpec
+    ;
+
+template
+    : genericModuleTemplate
+    | genericRegionTemplate
+    | genericProcedureTemplate
+    | genericProcessTemplate
+    | genericModuleModeTemplate
+    | genericRegionModeTemplate
+    | genericTaskModeTemplate
+    | genericInterfaceModeTemplate
+    | remoteProgramUnit
     ;
 
 contextList
@@ -21,7 +65,8 @@ definingOccurrence
     : SIMPLE_NAME_STRING;
 
 moduleBody
-    : (dataStatement | visibilityStatement)* actionStatementList
+    : (dataStatement | visibilityStatement | region |
+      specRegion)* actionStatementList
     ;
 
 handler
@@ -30,6 +75,50 @@ handler
 
 onAlternative
     : LPAREN exceptionList RPAREN COLON actionStatementList
+    ;
+
+remoteModulion
+    : (SIMPLE_NAME_STRING COLON)? REMOTE pieceDesignator SC
+    ;
+
+genericModuleInstantiation
+    : SIMPLE_NAME_STRING COLON MODULE = NEW genericModuleName
+      seizeStatement* actualGenericParameterList END
+      SIMPLE_NAME_STRING? SC
+    ;
+
+simpleSpecModule
+    : contextList? (SIMPLE_NAME_STRING COLON)? SPEC MODULE
+      specModuleBody END SIMPLE_NAME_STRING? SC
+    ;
+
+moduleSpec
+    : contextList? SIMPLE_NAME_STRING COLON MODULE SPEC
+      specModuleBody END SIMPLE_NAME_STRING? SC
+    ;
+
+remoteSpec
+    : (SIMPLE_NAME_STRING COLON)? SPEC REMOTE pieceDesignator SC
+    ;
+
+regionBody
+    : (dataStatement | visibilityStatement)*
+    ;
+
+genericRegionInstantiation
+    : SIMPLE_NAME_STRING COLON REGION = NEW genericRegionName
+     (seizeStatement)*
+      actualGenericParameterList END SIMPLE_NAME_STRING? SC
+    ;
+
+simpleSpecRegion
+    : contextList? (SIMPLE_NAME_STRING COLON)? SPEC REGION
+      specRegionBody END SIMPLE_NAME_STRING? SC
+    ;
+
+regionSpec
+    : contextList? SIMPLE_NAME_STRING COLON REGION SPEC
+      specRegionBody END SIMPLE_NAME_STRING? SC
     ;
 
 context
@@ -70,8 +159,22 @@ seizeStatement
     | SEIZE seizeWindow prefixClause? SC
     ;
 
-contextBody
+actualGenericParameterList
+    : actualGenericParameter actualGenericParameter*
+    ;
+
+specModuleBody
+    : (quasiDataStatement | visibilityStatement |
+       specModule | specRegion )*
+    ;
+
+specRegionBody
     : (quasiDataStatement | visibilityStatement)*
+    ;
+
+contextBody
+    : (quasiDataStatement | visibilityStatement |
+       specModule | specRegion)*
     ;
 
 declarationStatement
@@ -85,6 +188,7 @@ definitionStatement
     | procedureDefinitionStatement
     | processDefinitionStatement
     | signalDefinitionStatement
+    | template
     | empty SC
     ;
 
@@ -93,31 +197,10 @@ grantStatement
     | GRANT grantWindow prefixClause? friendClause? SC
     ;
 
-friendClause
-    : TO friendNameList
-    ;
-
-friendNameList
-    : friendName (COMMA friendName)*
-    ;
-
-friendName
-    : modulionOrMoretaModeName (EXCLAMATION_MARK friendProcedureOrProcessName)
-    ;
-
-modulionOrMoretaModeName
-    : modulionName
-    | moretaModeName
-    ;
-
-friendProcedureOrProcessName
-    : procedureName (LPAREN parameterList RPAREN ((RETURNS)? LPAREN resultSpec RPAREN)?)?
-    | processName
-    ;
-
 actionStatement
     : (definingOccurrence COLON)? action handler? SIMPLE_NAME_STRING? SC
     | module
+    | specModule
     | contextModule
     ;
 
@@ -186,11 +269,13 @@ synonymDefinitionStatement
 procedureDefinitionStatement
     : definingOccurrence COLON procedureDefinition
       handler? SIMPLE_NAME_STRING? SC
+    | genericProcedureInstantiation
     ;
 
 processDefinitionStatement
     : definingOccurrence COLON processDefinition
       handler? SIMPLE_NAME_STRING? SC
+    | genericProcessInstantiation SC
     ;
 
 signalDefinitionStatement
@@ -201,9 +286,9 @@ grantWindow
     : grantPostfix (COMMA grantPostfix)*
     ;
 
-//friendClause
-//    : TO friendNameList
-//    ;
+friendClause
+    : TO friendNameList
+    ;
 
 action
     : bracketedAction
@@ -217,6 +302,8 @@ action
     | emptyAction
     | startAction
     | stopAction
+    | delayAction
+    | continueAction
     | sendAction
     | causeAction
     ;
@@ -262,7 +349,7 @@ narrowCharacterStringLiteral
     ;
 
 wideCharacterStringLiteral
-    : WIDE_CHARACTER_PREFIX QUOTATION_MARK (NON_RESERVED_WIDE_CHARACTER | quote | controlSequence)* QUOTATION_MARK
+    : ('W\''|'w\'') QUOTATION_MARK (NON_RESERVED_WIDE_CHARACTER | quote | controlSequence)* QUOTATION_MARK
     ;
 
 quasiDeclarationStatement
@@ -309,9 +396,21 @@ synonymDefinition
     ;
 
 procedureDefinition
-    : PROC LPAREN formalParameterList? RPAREN resultSpec?
+    : PROC LPAREN (formalParameterList)? RPAREN resultSpec?
      (EXCEPTIONS LPAREN exceptionList RPAREN)? procedureAttributeList SC
       procBody END
+    ;
+
+genericProcedureInstantiation
+    : SIMPLE_NAME_STRING COLON PROC = NEW genericProcedureName
+      seizeStatement* actualGenericParameterList END
+      SIMPLE_NAME_STRING? SC
+    ;
+
+genericProcessInstantiation
+    : SIMPLE_NAME_STRING COLON PROCESS = NEW genericProcessName
+      seizeStatement* actualGenericParameterList END
+      SIMPLE_NAME_STRING? SC
     ;
 
 processDefinition
@@ -327,19 +426,19 @@ grantPostfix
     | newmodeNameString forbidClause
     | (prefix EXCLAMATION_MARK)? ALL
     ;
-//
-//friendNameList
-//    : friendName (COMMA friendName)*
-//    ;
+
+friendNameList
+    : friendName (COMMA friendName)*
+    ;
 
 bracketedAction
     : ifAction
     | caseAction
-//    | doAction
-//    | beginEndBlock
-//    | delayCaseAction
-//    | receiveCaseAction
-//    | timingAction
+    | doAction
+    | beginEndBlock
+    | delayCaseAction
+    | receiveCaseAction
+    | timingAction
     ;
 
 assignmentAction
@@ -359,17 +458,28 @@ expression
 
 operand0
     : operand1
-    | operand0 (OR | ORIF | XOR) operand1
+    | subOperand0 (OR | ORIF | XOR) operand1
     ;
+
+subOperand0
+    : operand0;
 
 operand1
     : operand2
-    | operand1 (AND | ANDIF) operand2
+    | subOperand1 (AND | ANDIF) operand2
+    ;
+
+subOperand1
+    : operand1
     ;
 
 operand2
     : operand3
-    | operand2 operator3 operand3
+    | subOperand2 operator3 operand3
+    ;
+
+subOperand2
+    : operand2
     ;
 
 operator3
@@ -391,7 +501,11 @@ powersetInclusionOperator
 
 operand3
     : operand4
-    | operand3 operator4 operand4
+    | subOperand3 operator4 operand4
+    ;
+
+subOperand3
+    : operand3
     ;
 
 operator4
@@ -402,12 +516,20 @@ operator4
 
 operand4
     : operand5
-    | operand4 arithmeticMultiplicativeOperator operand5
+    | subOperand4 arithmeticMultiplicativeOperator operand5
+    ;
+
+subOperand4
+    : operand4
     ;
 
 operand5
     : operand6
-    | operand5 exponentiationOperator operand6
+    | subOperand5 exponentiationOperator operand6
+    ;
+
+subOperand5
+    : operand5
     ;
 
 exponentiationOperator
@@ -491,23 +613,25 @@ operand7
 
 primitiveValue
     : locationContents
-//    | valueName
+    | valueName
     | literal
     | tuple
-//    | valueStringElement
-//    | valueStringSlice
-//    | valueArrayElement
-//    | valueArraySlice
+    | valueStringElement
+    | valueStringSlice
+    | valueArrayElement
+    | valueArraySlice
     | valueStructureField
-//    | valueProcedureCall
-//    | valueBuiltInRoutineCall
+    | expressionConversion
+    | representationConversion
+    | valueProcedureCall
+    | valueBuiltInRoutineCall
     | startExpression
     | zeroAdicOperator
     | parenthesizedExpression
     ;
 
 parenthesizedExpression
-    : LPAREN expression RPAREN
+    : LAPREN expression RPAREN
     ;
 
 zeroAdicOperator
@@ -527,12 +651,20 @@ actualParameter
     | location
     ;
 
-//valueProcedureCall
-//    : valueProcedureCall
-//    ;
-//
-//valueBuiltInRoutineCall
-//    : valueBuiltInRoutineCall;
+valueProcedureCall
+    : valueProcedureCall
+    ;
+
+valueBuiltInRoutineCall
+    : valueBuiltInRoutineCall;
+
+representationConversion
+    : modeName LAPREN expression RPAREN
+    ;
+
+expressionConversion
+    : modeName HASHTAG LPAREN expression RPAREN
+    ;
 
 valueStructureField
     : structurePrimitiveValue DOT fieldName
@@ -542,31 +674,31 @@ fieldName
     : SIMPLE_NAME_STRING
     ;
 
-//valueArrayElement
-//    : arrayPrimitiveValue LPAREN expressionList RPAREN
-//    ;
-//
-//valueArraySlice
-//    : arrayPrimitiveValue LPAREN lowerElement COLON upperElement RPAREN
-//    | arrayPrimitiveValue LPAREN firstElement UP sliceSize RPAREN
-//    ;
-//
-//valueStringSlice
-//    : stringPrimitiveValue LPAREN leftElement COLON rightElement RPAREN
-//    | stringPrimitiveValue LPAREN startElement UP sliceSize RPAREN
-//    ;
+valueArrayElement
+    : arrayPrimitiveValue LPAREN expressionList RPAREN
+    ;
+
+valueArraySlice
+    : arrayPrimitiveValue LPAREN lowerElement COLON upperElement RPAREN
+    | arrayPrimitiveValue LPAREN firstElement UP sliceSize RPAREN
+    ;
+
+valueStringSlice
+    : stringPrimitiveValue LPAREN leftElement COLON rightElement RPAREN
+    | stringPrimitiveValue LPAREN startElement UP sliceSize RPAREN
+    ;
 
 locationContents
     : location
     ;
 
-//valueName
-//    : synonymName
-//    | valueEnumerationName
-//    | valueDoWithName
-//    | valueReceiveName
-//    | generalProcedureName
-//    ;
+valueName
+    : synonymName
+    | valueEnumerationName
+    | valueDoWithName
+    | valueReceiveName
+    | generalProcedureName
+    ;
 
 literal
     : integerLiteral
@@ -603,7 +735,7 @@ emptinessLiteral
 
 //TODO check [predefined]
 emptinessLiteralName
-    : NULL_LITERAL
+    : NULL
     ;
 
 setLiteral
@@ -677,23 +809,23 @@ caseLabelSpecification
     ;
 
 caseLabel
-//    : discreteLiteralExpression
-//    : literalRange
-    : discreteModeName
+    : discreteLiteralExpression
+    | literalRange
+    | discreteModeName
     | ELSE
     ;
 
-//literalRange
-//    : lowerBound COLON upperBound
-//    ;
+literalRange
+    : lowerBound COLON upperBound
+    ;
 
-//lowerBound
-//    : discreteLiteralExpression
-//    ;
+lowerBound
+    : discreteLiteralExpression
+    ;
 
-//upperBound
-//    : discreteLiteralExpression
-//    ;
+upperBound
+    : discreteLiteralExpression
+    ;
 
 
 irrelevant
@@ -716,6 +848,14 @@ structureTuple
 
  fieldNameList
     : DOT fieldName (COMMA DOT fieldName )*
+    ;
+
+valueStringElement
+    : stringPrimitiveValue LPAREN startElement RPAREN
+    ;
+
+startElement
+    : integerExpression
     ;
 
 referencedLocation
@@ -783,24 +923,7 @@ stringConcatenationOperator
 callAction
     : procedureCall
     | builtInRoutineCall
-    ;
-
-procedureCall
-    : procedureName LPAREN actualParameterList? RPAREN
-    ;
-
-builtInRoutineCall
-    : builtInRoutineName LPAREN builtInRoutineParameterList? RPAREN
-    ;
-
-builtInRoutineParameterList
-    : builtInRoutineParameter (COMMA builtInRoutineParameter)*
-    ;
-
-builtInRoutineParameter
-    : value
-    | location
-    | nonReservedName  ( LPAREN COMMA builtInRoutineParameterList RPAREN)?
+    | moretaComponentProcedureCall
     ;
 
 exitAction
@@ -839,19 +962,22 @@ stopAction
     : STOP
     ;
 
+delayAction
+    : DELAY eventLocation priority?
+    ;
+
 priority
     : PRIORITY integerLiteralExpression
     ;
 
+continueAction
+    : CONTINUE eventLocation
+    ;
+
 sendAction
     : sendSignalAction
+    | sendBufferAction
     ;
-
-sendSignalAction
-    : SEND signalName (LPAREN value (COMMA value)* RPAREN )?
-      TO instancePrimitiveValue priority?
-    ;
-
 
 causeAction
     : CAUSE exceptionName
@@ -866,24 +992,8 @@ formalParameterList
     : formalParameter (COMMA formalParameter)*
     ;
 
-formalParameter
-    : definingOccurrenceList parameterSpec
-    ;
-
-parameterSpec
-    : mode_  parameterAttribute?
-    ;
-
-parameterAttribute
-    : IN | OUT | INOUT | LOC DYNAMIC?
-    ;
-
 resultSpec
     : RETURNS LPAREN mode_ resultAttribute? RPAREN
-    ;
-
-resultAttribute
-    : NONREF? LOC DYNAMIC?
     ;
 
 simplePrefix
@@ -900,8 +1010,7 @@ quote
 
 controlSequence
     : CIRCUMFLEX LPAREN integerLiteralExpression ( COMMA integerLiteralExpression)* RPAREN
-//    | CIRCUMFLEX nonSpecialCharacter
-    | CIRCUMFLEX NON_RESERVED_CHARACTER //TODO check
+    | CIRCUMFLEX nonSpecialCharacter
     | CIRCUMFLEX
     ;
 
@@ -910,35 +1019,14 @@ quasiDeclaration
     | quasiLocIdentityDeclaration
     ;
 
-quasiLocationDeclaration
-    : definingOccurrenceList mode_
-    ;
-
-quasiLocIdentityDeclaration
-    : definingOccurrenceList mode_
-      LOC NONREF? DYNAMIC?
-    ;
-
 quasiSynonymDefinitionStatement
     : SYN quasiSynonymDefinition (COMMA quasiSynonymDefinition)* SC
-    ;
-
-quasiSynonymDefinition
-    : definingOccurrenceList (mode_ EQL constantValue? |  mode_? EQL literalExpression)
     ;
 
 quasiProcedureDefinitionStatement
     : definingOccurrence COLON PROC LPAREN quasiFormalParameterList? RPAREN
       resultSpec? ( EXCEPTIONS LPAREN exceptionList RPAREN)?
       procedureAttributeList ( END ( SIMPLE_NAME_STRING )?)? SC
-    ;
-
-quasiFormalParameterList
-    : quasiFormalParameter (COMMA quasiFormalParameter)*
-    ;
-
-quasiFormalParameter
-    : SIMPLE_NAME_STRING (COMMA SIMPLE_NAME_STRING)* parameterSpec
     ;
 
 quasiProcessDefinitionStatement
@@ -950,193 +1038,29 @@ quasiSignalDefinitionStatement
     : SIGNAL quasiSignalDefinition (COMMA quasiSignalDefinition)* SC
     ;
 
-quasiSignalDefinition
-    : definingOccurrence (EQL LPAREN mode_ (COMMA mode_)* RPAREN )? (TO)?
-    ;
-
 initialization
     : reachBoundInitialization
     | lifetimeBoundInitialization
-    ;
-
-reachBoundInitialization
-    : assignmentSymbol value handler?
-    ;
-
-lifetimeBoundInitialization
-    : INIT assignmentSymbol constantValue
+    | moretaBoundInitialization
     ;
 
 nonCompositeMode
     : discreteMode
     | realMode
-//    | powersetMode
-//    | referenceMode
-//    | procedureMode
-//    | instanceMode
-//    | synchronizationMode
-//    | inputOutputMode
-//    | timingmode
-    ;
-
-realMode
-    : floatingPointMode
-//    | floatingPointRangeMode
-    ;
-
-floatingPointMode
-    : FLOATING_POINT_MODE_NAME
-    ;
-
-discreteMode
-    : integerMode
-    | booleanMode
-    | characterMode
-    | setMode
-//    | discreteRangeMode
-    ;
-
-integerMode
-    : INTEGER_MODE_NAME
-    ;
-
-booleanMode
-    : booleanModeName
-    ;
-
-characterMode
-    : CHARACTER_MODE_NAME
-    ;
-
-setMode
-    : SET LPAREN setList RPAREN
-    | setModeName
-    ;
-
-setList
-    : numberedSetList
-    | unnumberedSetList
-    ;
-
-numberedSetList
-    : numberedSetElement (COMMA numberedSetElement)*
-    ;
-
-numberedSetElement
-    : setElementNameDefiningOccurrence EQL integerLiteralExpression
-    ;
-
-unnumberedSetList
-    : setElement (COMMA setElement)*
-    ;
-
-setElement
-    : setElementNameDefiningOccurrence
+    | powersetMode
+    | referenceMode
+    | procedureMode
+    | instanceMode
+    | synchronizationMode
+    | inputOutputMode
+    | timingmode
     ;
 
 compositeMode
     : stringMode
     | arrayMode
-//    | structureMode
-    ;
-
-arrayMode
-    : ARRAY LPAREN indexMode (COMMA indexMode)* RPAREN
-      elementMode (elementLayout)*
-    | parameterizedArrayMode
-    | arrayModeName
-    ;
-
-elementLayout
-    : PACK | NOPACK | step
-    ;
-
-fieldLayout
-    : PACK | NOPACK | pos
-    ;
-
-
-step
-    : STEP LPAREN pos (COMMA stepSize)? RPAREN
-    ;
-
-pos
-    : POS LPAREN word COMMA startBit COMMA length RPAREN
-    | POS LPAREN word (COMMA startBit (COLON endBit)? )? RPAREN
-    ;
-
-word
-    : integerLiteralExpression
-    ;
-
-stepSize
-    : integerLiteralExpression
-    ;
-
-startBit
-    : integerLiteralExpression
-    ;
-
-endBit
-    : integerLiteralExpression
-    ;
-
-length
-    : integerLiteralExpression
-    ;
-
-parameterizedArrayMode
-    : originArrayModeName LPAREN upperIndex RPAREN
-    | parameterizedArrayModeName
-    ;
-
-originArrayModeName
-    : arrayModeName
-    ;
-
-upperIndex
-    : discreteLiteralExpression
-    ;
-
-indexMode
-    : discreteMode
-    | literalRange
-    ;
-
-literalRange
-    : lowerBound COLON upperBound
-    ;
-
-lowerBound
-    : discreteLiteralExpression
-    ;
-
-upperBound
-    : discreteLiteralExpression
-    ;
-
-elementMode
-    : mode_
-    ;
-
-stringMode
-    : STRING_TYPE LPAREN stringLength RPAREN VARYING?
-    | parameterizedStringMode
-    | stringModeName
-    ;
-
-parameterizedStringMode
-    : originStringModeName LPAREN stringLength RPAREN
-    | parameterizedStringModeName
-    ;
-
-originStringModeName
-    : stringModeName
-    ;
-
-
-stringLength
-    : integerLiteralExpression
+    | structureMode
+    | moretaMode
     ;
 
 formalGenericModeIndication
@@ -1145,6 +1069,7 @@ formalGenericModeIndication
     | ANY_DISCRETE
     | ANY_INT
     | ANY_REAL
+    | moretaModeName
     ;
 
 assignmentSymbol
@@ -1152,20 +1077,19 @@ assignmentSymbol
     ;
 
 location
-//    : accessName
-//    | dereferencedBoundReference
-//    | dereferencedFreeReference
-//    | dereferencedRow
-//    | stringElement
-//    | stringSlice
-//    | arrayElement
-//    | arraySlice
-//    | structureField
-//    | locationProcedureCall
-//    | locationBuiltInRoutineCall
-//    | locationConversion
-//    | predefinedMoretaLocation
-    : SIMPLE_NAME_STRING
+    : accessName
+    | dereferencedBoundReference
+    | dereferencedFreeReference
+    | dereferencedRow
+    | stringElement
+    | stringSlice
+    | arrayElement
+    | arraySlice
+    | structureField
+    | locationProcedureCall
+    | locationBuiltInRoutineCall
+    | locationConversion
+    | predefinedMoretaLocation
     ;
 
 definingMode
@@ -1190,10 +1114,6 @@ processBody
     : dataStatementList actionStatementList
     ;
 
-dataStatementList
-    : dataStatement*
-    ;
-
 parameterList
     : parameterSpec (COMMA parameterSpec)*
     ;
@@ -1202,13 +1122,9 @@ forbidClause
     : FORBID (forbidNameList | ALL)
     ;
 
-forbidNameList
-    : LPAREN fieldName (COMMA fieldName)* RPAREN
+friendName
+    : modulionOrMoretaModeName (EXCLAMATION_MARK friendProcedureOrProcessName)?
     ;
-
-//friendName
-//    : modulionOrMoretaModeName (EXCLAMATION_MARK friendProcedureOrProcessName)?
-//    ;
 
 ifAction
     : IF booleanExpression thenClause (elseClause)? FI
@@ -1240,78 +1156,79 @@ caseAlternative
     : caseLabelSpecification COLON actionStatementList
     ;
 
-//doAction
-//    : DO (controlPart SC)? actionStatementList OD
-//    ;
+doAction
+    : DO (controlPart SC)? actionStatementList OD
+    ;
 
-//controlPart
-//    : forControl (whileControl)?
-//    | whileControl
-//    | withPart
-//    ;
+controlPart
+    : forControl (whileControl)?
+    | whileControl
+    | withPart
+    ;
 
-//beginEndBlock
-//    : BEGIN beginEndBody END
-//    ;
+beginEndBlock
+    : BEGIN beginEndBody END
+    ;
 
-//delayCaseAction
-//    : DELAY CASE (SET instanceLocation (priority)? SC | <priority> SC )?
-//    (delayAlternative)+ ESAC
-//    ;
+delayCaseAction
+    : DELAY CASE ( SET instanceLocation (priority)? SC | <priority> SC )?
+    ( delayAlternative )+ ESAC
+    ;
 
-//delayAlternative
-//    : LPAREN eventList RPAREN COLON actionStatementList
-//    ;
+delayAlternative
+    : LPAREN eventList RPAREN COLON actionStatementList
+    ;
 
-//eventList
-//    : eventLocation (COMMA eventLocation )*
-//    ;
+eventList
+    : eventLocation (COMMA eventLocation )*
+    ;
 
-//receiveCaseAction
-//    : receiveSignalCaseAction
-//    | receiveBufferCaseAction
-//    ;
+receiveCaseAction
+    : receiveSignalCaseAction
+    | receiveBufferCaseAction
+    ;
 
-//receiveSignalCaseAction
-//    : RECEIVE CASE (SET instanceLocation SC )?
-//     (signalReceiveAlternative)+
-//     (ELSE actionStatementList)? ESAC
-//    | RECEIVE (SET instanceLocation)?
-//      LPAREN signalName (IN locationList)? RPAREN
-//    ;
+receiveSignalCaseAction
+    : RECEIVE CASE (SET instanceLocation SC )?
+     (signalReceiveAlternative)+
+     (ELSE actionStatementList)? ESAC
+    | RECEIVE (SET instanceLocation)?
+      LPAREN signalName (IN locationList)? RPAREN
+    ;
 
-//locationList
-//    : location (COMMA location)*
-//    ;
+locationList
+    : location (COMMA location)*
+    ;
 
-//signalReceiveAlternative
-//    : LPAREN signalName (IN defining occurrence list)? RPAREN COLON actionStatementList
-//    ;
+signalReceiveAlternative
+    :
+    LAPREN signalName (IN defining occurrence list)? RPAREN COLON actionStatementList
+    ;
 
-//timingAction
-//    : relativeTimingAction
-//    | absoluteTimingAction
-//    | cyclicTimingAction
-//    ;
+timingAction
+    : relativeTimingAction
+    | absoluteTimingAction
+    | cyclicTimingAction
+    ;
 
-//relativeTimingAction
-//    : AFTER durationPrimitiveValue (DELAY)? IN
-//      actionStatementList timingHandler END
-//    ;
+relativeTimingAction
+    : AFTER durationPrimitiveValue (DELAY)? IN
+      actionStatementList timingHandler END
+    ;
 
-//timingHandler
-//    : TIMEOUT actionStatementList
-//    ;
+timingHandler
+    : TIMEOUT actionStatementList
+    ;
 
-//absoluteTimingAction
-//    : AT absoluteTimePrimitiveValue IN
-//      actionStatementList timingHandler END
-//    ;
+absoluteTimingAction
+    : AT absoluteTimePrimitiveValue IN
+      actionStatementList timingHandler END
+    ;
 
-//cyclicTimingAction
-//    : CYCLE durationPrimitiveValue IN
-//      actionStatementList END
-//    ;
+cyclicTimingAction
+    : CYCLE durationPrimitiveValue IN
+      actionStatementList END
+    ;
 
 value
     : expression
@@ -1320,136 +1237,5 @@ value
 
 undefinedValue
     : MUL
-//    | undefinedSynonymName
+    | undefinedSynonymName
     ;
-
-
-
-//Need further check, temporarily replaced with simpler elemetns
-procedureName
-    : SIMPLE_NAME_STRING
-    ;
-
-processName
-    : SIMPLE_NAME_STRING
-    ;
-
-constantValue
-    : SIMPLE_NAME_STRING
-    | integerLiteral
-    ;
-
-literalExpression
-    : SIMPLE_NAME_STRING
-    | integerLiteral
-    ;
-
-newmodeNameString
-    : SIMPLE_NAME_STRING
-    ;
-
-integerLiteralExpression
-    : integerLiteral
-    ;
-
-structurePrimitiveValue
-    : SIMPLE_NAME_STRING
-    ;
-
-modeName
-    : SIMPLE_NAME_STRING
-    ;
-
-discreteModeName
-    : SIMPLE_NAME_STRING
-    ;
-
-builtInRoutineName
-    : SIMPLE_NAME_STRING
-    ;
-
-nonReservedName
-    : SIMPLE_NAME_STRING
-    ;
-
-labelName
-    : SIMPLE_NAME_STRING
-    ;
-
-signalName
-    : SIMPLE_NAME_STRING
-    ;
-
-instancePrimitiveValue
-    : SIMPLE_NAME_STRING
-    ;
-
-setElementNameDefiningOccurrence
-    : SIMPLE_NAME_STRING
-    ;
-
-setModeName
-    : SIMPLE_NAME_STRING
-    ;
-
-arrayModeName
-    : SIMPLE_NAME_STRING
-    ;
-
-parameterizedArrayModeName
-    : SIMPLE_NAME_STRING
-    ;
-
-discreteLiteralExpression
-    : SIMPLE_NAME_STRING
-    | integerLiteralExpression
-    ;
-
-parameterizedStringModeName
-    : SIMPLE_NAME_STRING
-    ;
-
-stringModeName
-    : SIMPLE_NAME_STRING
-    ;
-
-discreteExpression
-    : SIMPLE_NAME_STRING
-    ;
-
-modulionName
-    : SIMPLE_NAME_STRING
-    ;
-
-moretaModeName
-    : SIMPLE_NAME_STRING
-    ;
-
-//TODO check, as these are only the predefined
-booleanModeName
-    : BOOL
-    ;
-
-// Found this one on stackoverflow
-// https://stackoverflow.com/questions/30976962/nested-boolean-expression-parser-using-antlr
-booleanExpression
- : LPAREN expression RPAREN                       #parenExpression
- | NOT expression                                 #notExpression
- | left=expression op=comparator right=expression #comparatorExpression
- | left=expression op=binary right=expression     #binaryExpression
- | BOOL_LITERAL                                   #boolExpression
- | SIMPLE_NAME_STRING                             #identifierExpression
- | DECIMAL_NUMBER                                 #decimalExpression
- ;
-
-comparator
- : GT | GTE | LT | LTE | EQL
- ;
-
-
-binary
- : AND | OR
- ;
-
-
-
