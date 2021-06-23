@@ -6,7 +6,7 @@ Antlr4 style Chill Parser (To be continued...)
 - Install Java (1.7 or higher).
 - Install Antlr4: 
    - See: https://github.com/antlr/antlr4/blob/master/doc/getting-started.md
-   - Some distros already contain (apt install antlr4)
+   - Some distros already contain (```` apt install antlr4```` )
 
 #### Files:
 - ChillLexer.g4: Contains most of the tokens used in CHILL language.

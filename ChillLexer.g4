@@ -184,17 +184,6 @@ USE_SEIZE_FILE_RESTRICTED:      'USE_SEIZE_FILE_RESTRICTED';
 USE_GRANT_FILE:                 'USE_GRANT_FILE';
 
 
-LETTER
-    : 'A' | 'B' | 'C' | 'D' |  E  | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M'
-    | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
-    | 'a' | 'b' | 'c' | 'd' | 'e '| 'f' | 'g' | 'h' | 'i '| 'j' | 'k' | 'l' | 'm'
-    | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
-    ;
-
-DIGIT
-    : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
-    ;
-
 TRUE:               'TRUE';
 FALSE:              'FALSE';
 
@@ -209,7 +198,7 @@ LPAREN:             '(';
 RPAREN:             ')';
 LC:                 '{';
 RC:                 '}';
-LPC:                '[' |
+LPC:                '['|
                     '(:';
 RPC:                ']'|
                     ':)';
@@ -260,10 +249,20 @@ BINARY_LITERAL:        BINARY_LITERAL_PREFIX? BINARY_NUMBER;
 HEX_LITERAL:           HEX_LITERAL_PREFIX? HEX_NUMBER;
 OCT_LITERAL:           OCT_LITERAL_PREFIX? OCT_NUMBER;
 
-E:   'E';
+BRACKETED_COMMENT
+    : '/*'.*?'*/'-> channel(HIDDEN)
+    ;
+
+LINE_END_COMMENT
+    : SUB SUB ~[\r\n]* -> channel(HIDDEN)
+    ;
+
+WS
+    : [ \t\r\n\u000C]+ -> channel(HIDDEN)
+    ;
 
 SIMPLE_NAME_STRING
-    : LETTER (LETTER | DIGIT | UNDERSCORE)*
+    : LETTER (LETTER|DIGIT|UNDERSCORE)*
     ;
 
 //TODO check
@@ -281,17 +280,6 @@ COMMENT
     | LINE_END_COMMENT
     ;
 
-BRACKETED_COMMENT
-    : '/*'.*?'*/'-> channel(HIDDEN)
-    ;
-
-LINE_END_COMMENT
-    : SUB SUB ~[\r\n]* -> channel(HIDDEN)
-    ;
-
-WS
-    : [ \t\r\n\u000C]+ -> channel(HIDDEN)
-    ;
 
 FILE_NAME_NAME
     : (LETTER | DIGIT | UNDERSCORE )+;
@@ -348,4 +336,17 @@ STRING_TYPE
     : BOOLS
     | CHARS
     | 'WCHARS'
+    ;
+
+E: 'E';
+
+LETTER
+    : 'A' | 'B' | 'C' | 'D' |  E  | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M'
+    | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
+    | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm'
+    | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
+    ;
+
+DIGIT
+    : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
     ;
